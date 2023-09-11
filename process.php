@@ -34,18 +34,23 @@ function sendEmail(array $data, $files): bool {
     $html .= "<p>SSN: " . $data["ssn"] . "</p>";
 
     try {
-        $mail_from = getEnvVariable("MAIL_FROM_ADDRESS");
-        // $mail_to = getEnvVariable("MAIL_TO_ADDRESS");
-        $mailgun_api_key = getEnvVariable("MAILGUN_API_KEY");
-        $domain = getEnvVariable("MAILGUN_DOMAIN");
-        $mg = Mailgun::create($mailgun_api_key); // For US servers
-        $result = $mg->messages()->send($domain, [
+        $mail_from = str_replace('"', '', getEnvVariable("MAIL_FROM_ADDRESS"));
+        $mail_to = str_replace('"', '', getEnvVariable("MAIL_TO_ADDRESS"));
+        $mailgun_api_key = str_replace('"', '', getEnvVariable("MAILGUN_API_KEY"));
+        $domain = str_replace('"', '', getEnvVariable("MAILGUN_DOMAIN"));
+
+        $options = [
             'from' => $mail_from, // 'Mailgun Sandbox <postmaster@sandbox...>',
-            'to' => $domain, // 'Your Name <your_email_address>',
+            'to' => $mail_to, // 'Your Name <your_email_address>',
             'subject' => 'Mail from ' . $data["first_name"] . " " . $data["last_name"],
             'html' => $html,
-            'attachment' => $files,
-        ]);
+        ];
+        if (count($files) > 0) {
+            $options['attachment'] = $files;
+        }
+
+        $mg = Mailgun::create($mailgun_api_key);
+        $mg->messages()->send($domain, $options);
 
         return true;
     } catch (Exception $e) {
@@ -53,13 +58,13 @@ function sendEmail(array $data, $files): bool {
     }
 }
 
-function validateName(string $name): bool {return preg_match("/^[a-zA-Z]{4,100}$/", $name);}
+function validateName(string $name): bool {return strlen($name) >= 2 && strlen($name) <= 100;}
 function validateAddress(string $address): bool {return strlen($address) >= 10 && strlen($address) <= 100;}
 function validateState(string $state): bool {return preg_match("/^[A-Z]{2}$/", $state);}
 function validateCity(string $city): bool {return strlen($city) >= 2 && strlen($city) <= 100;}
 function validateZipCode(string $zip_code): bool {return preg_match("/^[0-9]{5,6}$/", $zip_code);}
 function validateEmail(string $email): bool {return filter_var($email, FILTER_VALIDATE_EMAIL);}
-function validatePhone(string $phone): bool {return preg_match("/^[0-9\-\s\+]{10,20}$/", $phone);}
+function validatePhone(string $phone): bool {return preg_match("/^[0-9\-\s\+\(\)]{9,20}$/", $phone);}
 function validateSSN(string $ssn): bool {return preg_match("/^[0-9\s\-]{9,13}$/", $ssn);}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -105,11 +110,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ];
 
         $files = [];
-        foreach ($_FILES["attachments"]["name"] as $key => $name) {
-            $files[] = [
-                "filePath" => $_FILES["attachments"]["tmp_name"][$key],
-                "filename" => $name,
-            ];
+        if (isset($_FILES["attachments"]) && $_FILES["attachments"]["name"][0]) {
+            foreach ($_FILES["attachments"]["name"] as $key => $name) {
+                $files[] = [
+                    "filePath" => $_FILES["attachments"]["tmp_name"][$key],
+                    "filename" => $name,
+                ];
+            }
         }
 
         $sent = sendEmail($data, $files);
