@@ -3,9 +3,11 @@
 
 
 
-#### Description:
-Simple PHP form that sends the form data to an email address.
+#### About:
 
+Simple PHP form that sends form data to an email address.
+
+> Form [example](https://www.rolandmotors89.com/apply-online/)
 
 
 #### Usage:
@@ -19,6 +21,8 @@ git clone git@github.com:boolfalse/php-online-form.git && cd php-online-form
 ```shell
 composer install
 ```
+
+- Setup [Mailgun](https://www.mailgun.com/) for sending emails.
 
 - Copy `.env.example` to `.env` and set the environment variables:
 ```shell
